@@ -186,6 +186,7 @@ dependencies = [
  "serde_yaml",
  "thiserror",
  "willhook",
+ "winapi",
 ]
 
 [[package]]
