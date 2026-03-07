@@ -3,17 +3,17 @@ use std::{
     error,
     path::PathBuf,
     sync::{
-        Arc,
         atomic::{AtomicBool, Ordering},
+        Arc,
     },
     time::Duration,
 };
-use willhook::{InputEvent, IsSystemKeyPress::Normal, KeyPress, keyboard_hook};
+use willhook::{keyboard_hook, InputEvent, IsSystemKeyPress::Normal, KeyPress};
 
-mod parser;
-use parser::Config;
+use services::parser::Config;
 
-mod models;
+mod core;
+mod services;
 mod utils;
 
 #[derive(FromArgs)]
@@ -25,8 +25,13 @@ struct Args {
 }
 
 fn main() -> Result<(), Box<dyn error::Error>> {
+    utils::logger::info("Starting application");
+    utils::logger::debug("Debug message");
+    utils::logger::warn("Warning message");
+    utils::logger::error("Error message");
+
     let args: Args = argh::from_env();
-    let cfg: Config = parser::Config::load(args.config)?;
+    let cfg: Config = services::parser::Config::load(args.config)?;
 
     let rx = keyboard_hook().unwrap();
 

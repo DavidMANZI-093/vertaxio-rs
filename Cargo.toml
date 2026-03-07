@@ -5,6 +5,7 @@ edition = "2024"
 
 [dependencies]
 argh = "0.1.14"
+getch = "0.3.1"
 serde = "1.0.228"
 serde_yaml = "0.9.34"
 thiserror = "2.0.18"

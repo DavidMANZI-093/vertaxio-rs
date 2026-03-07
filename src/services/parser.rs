@@ -2,8 +2,8 @@ use serde::Deserialize;
 use std::path::PathBuf;
 use willhook::KeyboardKey as Key;
 
-use crate::models::XError::{self, ConfigError};
-use crate::utils::{self, Monitor};
+use crate::core::monitor;
+use crate::services::errors::XError::{self, ConfigError};
 
 #[derive(Debug)]
 pub struct Config {
@@ -62,7 +62,7 @@ impl Config {
             ))
             .into());
         }
-        utils::enumerate();
+        monitor::enumerate();
         Ok(Config {
             exit_key,
             dect_off_key,
