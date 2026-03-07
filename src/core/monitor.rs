@@ -7,6 +7,9 @@ use winapi::um::winuser::{EnumDisplayMonitors, GetMonitorInfoW, MONITORINFOEXW};
 
 use crate::services::errors::XError;
 
+use crate::utils::logger;
+
+#[derive(Clone)]
 pub struct Monitor {
     pub width: u32,
     pub height: u32,
@@ -30,79 +33,77 @@ unsafe extern "system" fn monitor_callback(
 
     unsafe {
         if GetMonitorInfoW(hmonitor, &mut info as *mut _ as *mut _) != 0 {
-            monitors.push(MonitorData {
-                hmonitor: hmonitor,
-                info: info,
-            });
+            monitors.push(MonitorData { hmonitor, info });
         }
     }
     TRUE
 }
 
-pub fn enumerate() -> Result<Monitor, XError> {
-    let mut monitors: Vec<MonitorData> = Vec::new();
+/// Retrieves all connected monitors from the system.
+pub fn get_all() -> Vec<Monitor> {
+    let mut monitors_data: Vec<MonitorData> = Vec::new();
     unsafe {
         EnumDisplayMonitors(
             ptr::null_mut(),
             ptr::null(),
             Some(monitor_callback),
-            &mut monitors as *mut _ as LPARAM,
+            &mut monitors_data as *mut _ as LPARAM,
         );
+    }
+
+    monitors_data
+        .into_iter()
+        .map(|m| {
+            let r = m.info.rcMonitor;
+            Monitor {
+                width: (r.right - r.left) as u32,
+                height: (r.bottom - r.top) as u32,
+                hmonitor: m.hmonitor,
+            }
+        })
+        .collect()
+}
+
+/// Enumerates monitors and prompts the user for selection if multiple are found.
+pub fn enumerate() -> Result<Monitor, XError> {
+    let monitors = get_all();
+
+    if monitors.is_empty() {
+        return Err(XError::ConfigError("No monitors found".into()));
     }
 
     if monitors.len() == 1 {
-        let monitor = monitors.into_iter().next().unwrap();
-        let r = monitor.info.rcMonitor;
-
-        return Ok(Monitor {
-            width: (r.right - r.left) as u32,
-            height: (r.bottom - r.top) as u32,
-            hmonitor: monitor.hmonitor,
-        });
+        let m = monitors.into_iter().next().unwrap();
+        logger::info(&format!("Auto-selected only monitor: {}x{}", m.width, m.height));
+        return Ok(m);
     }
 
-    println!("Multiple monitors detected:");
+    logger::info("Multiple monitors detected:");
     for (i, m) in monitors.iter().enumerate() {
-        let r = m.info.rcMonitor;
-
-        println!(
-            "{}: {}x{}",
-            i + 1,
-            (r.right - r.left) as u32,
-            (r.bottom - r.top) as u32
-        );
+        logger::info(&format!("   {}: {}x{}", i + 1, m.width, m.height));
     }
-    println!("Select monitor [1-{}] or 0 to cancel: ", monitors.len());
+    logger::info(&format!("Select monitor [1-{}] or 0 to cancel:", monitors.len()));
 
     let ch = Getch::new()
         .getch()
         .map_err(|e| XError::ConfigError(format!("Read error: {}", e)))?;
 
-    let choice = (ch as char)
-        .to_digit(10)
-        .ok_or_else(|| {
-            println!("Invalid input - exiting");
-            std::process::exit(1);
-        })
-        .unwrap() as u8;
+    let choice_char = ch as char;
+    let choice = choice_char.to_digit(10).unwrap_or(255) as u8;
 
     if choice == 0 {
-        println!("Cancelled - exiting");
+        logger::warn("Cancelled monitor selection - exiting");
         std::process::exit(0);
     }
 
     if choice < 1 || choice > monitors.len() as u8 {
-        println!("Choice out of range - exiting");
+        logger::error(&format!("Invalid input '{}' - exiting", choice_char));
         std::process::exit(1);
     }
 
     let idx = (choice - 1) as usize;
-
-    let r = monitors[idx].info.rcMonitor;
-
-    return Ok(Monitor {
-        width: (r.right - r.left) as u32,
-        height: (r.bottom - r.top) as u32,
-        hmonitor: monitors[idx].hmonitor,
-    });
+    let selected = monitors.into_iter().nth(idx).unwrap();
+    
+    logger::info(&format!("Selected monitor {}: {}x{}", choice, selected.width, selected.height));
+    Ok(selected)
 }

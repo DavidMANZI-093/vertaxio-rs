@@ -2,15 +2,15 @@ use serde::Deserialize;
 use std::path::PathBuf;
 use willhook::KeyboardKey as Key;
 
-use crate::core::monitor;
+use crate::core::monitor::{self, Monitor};
 use crate::services::errors::XError::{self, ConfigError};
 
-#[derive(Debug)]
+#[derive(Clone)]
 pub struct Config {
     pub exit_key: Key,
     pub dect_off_key: Key,
     pub fps: u8,
-    // pub monitor: Monitor,
+    pub monitor: Monitor,
 }
 
 #[derive(Debug, Deserialize)]
@@ -62,11 +62,15 @@ impl Config {
             ))
             .into());
         }
-        monitor::enumerate();
+        
+        // Enumerate and get the selected monitor
+        let monitor = monitor::enumerate()?;
+        
         Ok(Config {
             exit_key,
             dect_off_key,
             fps,
+            monitor,
         })
     }
 }

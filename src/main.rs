@@ -26,9 +26,6 @@ struct Args {
 
 fn main() -> Result<(), Box<dyn error::Error>> {
     utils::logger::info("Starting application");
-    utils::logger::debug("Debug message");
-    utils::logger::warn("Warning message");
-    utils::logger::error("Error message");
 
     let args: Args = argh::from_env();
     let cfg: Config = services::parser::Config::load(args.config)?;
@@ -66,5 +63,6 @@ fn main() -> Result<(), Box<dyn error::Error>> {
     }
     cv_thread.join().unwrap();
 
+    utils::logger::warn("Main loop exited");
     Ok(())
 }
