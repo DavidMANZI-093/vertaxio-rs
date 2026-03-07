@@ -1,14 +1,14 @@
 use serde::Deserialize;
 use std::path::PathBuf;
-use willhook::KeyboardKey as Key;
+use windows::Win32::UI::Input::KeyboardAndMouse::{VIRTUAL_KEY, VK_C, VK_K, VK_Q, VK_X, VK_Z};
 
 use crate::core::monitor::{self, Monitor};
 use crate::services::errors::XError::{self, ConfigError};
 
 #[derive(Clone)]
 pub struct Config {
-    pub exit_key: Key,
-    pub dect_off_key: Key,
+    pub exit_key: VIRTUAL_KEY,
+    pub trigger_key: VIRTUAL_KEY,
     pub fps: u8,
     pub monitor: Monitor,
 }
@@ -16,7 +16,7 @@ pub struct Config {
 #[derive(Debug, Deserialize)]
 struct RawConfig {
     exit_key: String,
-    dect_off_key: String,
+    trigger_key: String,
     fps: u8,
 }
 
@@ -31,10 +31,10 @@ impl Config {
     }
 
     fn validate(cfg: RawConfig) -> Result<Config, XError> {
-        let exit_key: Key = match cfg.exit_key.to_uppercase().as_str() {
-            "Q" => Key::Q,
-            "Z" => Key::Z,
-            "X" => Key::X,
+        let exit_key: VIRTUAL_KEY = match cfg.exit_key.to_uppercase().as_str() {
+            "Q" => VK_Q,
+            "Z" => VK_Z,
+            "X" => VK_X,
             _ => {
                 return Err(ConfigError(format!(
                     "Invalid exit_key: '{}'. Allowed values are 'Q', 'Z', and 'X'.",
@@ -43,13 +43,13 @@ impl Config {
                 .into());
             }
         };
-        let dect_off_key: Key = match cfg.dect_off_key.to_uppercase().as_str() {
-            "C" => Key::C,
-            "K" => Key::K,
+        let trigger_key: VIRTUAL_KEY = match cfg.trigger_key.to_uppercase().as_str() {
+            "C" => VK_C,
+            "K" => VK_K,
             _ => {
                 return Err(ConfigError(format!(
-                    "Invalid dect_off_key: '{}'. Allowed values are 'C', and 'K'.",
-                    cfg.dect_off_key
+                    "Invalid trigger_key: '{}'. Allowed values are 'C', and 'K'.",
+                    cfg.trigger_key
                 ))
                 .into());
             }
@@ -68,7 +68,7 @@ impl Config {
         
         Ok(Config {
             exit_key,
-            dect_off_key,
+            trigger_key,
             fps,
             monitor,
         })
