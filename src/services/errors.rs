@@ -12,6 +12,9 @@ pub enum XError {
     #[error("Timeout")]
     Timeout,
 
+    #[error("Vision processing error: {0}")]
+    VisionError(String),
+
     #[error("IO error: {0}")]
     IoError(#[from] std::io::Error),
 }

@@ -11,7 +11,7 @@ pub struct DXGICapture {
     duplication: IDXGIOutputDuplication,
     device: ID3D11Device,
     context: ID3D11DeviceContext,
-    texture_desc: D3D11_TEXTURE2D_DESC,
+    pub texture_desc: D3D11_TEXTURE2D_DESC,
 }
 
 impl DXGICapture {
