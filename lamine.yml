@@ -1,0 +1,9 @@
+exit_key: "Q"
+trigger_key: "K"
+mode_switch_key: "M"
+fps: 60
+debug_mode: true
+day_hsv_low: [0, 134, 78]
+day_hsv_high: [12, 255, 255]
+night_hsv_low: [0, 122, 78]
+night_hsv_high: [12, 255, 255]
