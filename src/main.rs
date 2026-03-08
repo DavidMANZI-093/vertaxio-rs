@@ -8,13 +8,15 @@ use std::{
     },
     time::{Duration, Instant},
 };
-use windows::Win32::UI::Input::KeyboardAndMouse::{GetAsyncKeyState, VIRTUAL_KEY};
 
 use services::parser::Config;
+use windows::Win32::System::Console::{FlushConsoleInputBuffer, GetStdHandle, STD_INPUT_HANDLE};
 
 mod core;
 mod services;
 mod utils;
+
+use services::input::{is_key_down, vk_to_string};
 
 #[derive(FromArgs)]
 /// Vertaxio, aim as good as masterchief, bruv...
@@ -22,10 +24,6 @@ struct Args {
     /// path to config file. (default lamine.yml)
     #[argh(option, short = 'c')]
     config: Option<PathBuf>,
-}
-
-fn is_key_down(key: VIRTUAL_KEY) -> bool {
-    unsafe { GetAsyncKeyState(key.0 as i32) < 0 }
 }
 
 fn main() -> Result<(), Box<dyn error::Error>> {
@@ -44,7 +42,22 @@ fn main() -> Result<(), Box<dyn error::Error>> {
 
     let target_frame_time = Duration::from_millis(1000 / cfg.fps as u64);
 
+    let capture_width = capture.texture_desc.Width as i32;
+    let capture_height = capture.texture_desc.Height as i32;
+
+    let is_day_mode = Arc::new(AtomicBool::new(true));
+    let is_day_mode_cv = Arc::clone(&is_day_mode);
+
     let cv_thread = std::thread::spawn(move || {
+        let mut pipeline = core::vision::VisionPipeline::new(
+            cfg.day_hsv_low,
+            cfg.day_hsv_high,
+            cfg.night_hsv_low,
+            cfg.night_hsv_high,
+            is_day_mode_cv,
+        )
+        .expect("Failed to initialize VisionPipeline");
+        let mut debug_window = core::debug::DebugWindow::new(cfg.debug_mode, cfg.fps as usize);
         let mut frames = 0;
         let mut last_fps_print = Instant::now();
 
@@ -56,12 +69,34 @@ fn main() -> Result<(), Box<dyn error::Error>> {
                 let frame_start = Instant::now();
 
                 match capture.grab_frame(100) {
-                    Ok(_buffer) => {
-                        // TODO: OpenCV logic will go here
+                    Ok(mut _buffer) => {
+                        let targets = pipeline
+                            .process_frame(capture_width, capture_height, &mut _buffer)
+                            .unwrap_or_else(|e| {
+                                utils::logger::error(&format!("Pipeline processing failed: {}", e));
+                                Vec::new()
+                            });
+
+                        if let Err(e) =
+                            debug_window.draw(capture_width, capture_height, &mut _buffer, &targets)
+                        {
+                            utils::logger::debug(&format!("Debug draw failed: {}", e));
+                        }
+
+                        if !targets.is_empty() {
+                            utils::logger::debug(&format!(
+                                "Found {} potential targets",
+                                targets.len()
+                            ));
+                        }
+
                         frames += 1;
                     }
-                    Err(services::errors::XError::Timeout) => {}
+                    Err(services::errors::XError::Timeout) => {
+                        debug_window.update();
+                    }
                     Err(e) => {
+                        debug_window.update();
                         utils::logger::debug(&format!("Capture skipped: {}", e));
                     }
                 }
@@ -77,8 +112,8 @@ fn main() -> Result<(), Box<dyn error::Error>> {
                     std::thread::sleep(target_frame_time - elapsed);
                 }
             } else {
+                debug_window.update();
                 std::thread::sleep(target_frame_time);
-                // Keep the FPS timer ticking even when paused so it doesn't dump a huge number upon resume
                 last_fps_print = Instant::now();
                 frames = 0;
             }
@@ -86,8 +121,9 @@ fn main() -> Result<(), Box<dyn error::Error>> {
     });
 
     utils::logger::info(&format!(
-        "Hold {:?} to activate processing, press {:?} to exit.",
-        cfg.trigger_key, cfg.exit_key
+        "Hold {} to activate processing, press {} to exit.",
+        vk_to_string(cfg.trigger_key),
+        vk_to_string(cfg.exit_key)
     ));
 
     let mut was_trigger_down = false;
@@ -116,6 +152,15 @@ fn main() -> Result<(), Box<dyn error::Error>> {
     }
     cv_thread.join().unwrap();
 
-    utils::logger::warn("Main loop exited");
+    utils::logger::warn("Main loop exited. Flushing input...");
+
+    // Flush the console input buffer so any keys pressed globally
+    // don't get vomited onto the terminal prompt after we close.
+    unsafe {
+        if let Ok(stdin_handle) = GetStdHandle(STD_INPUT_HANDLE) {
+            let _ = FlushConsoleInputBuffer(stdin_handle);
+        }
+    }
+
     Ok(())
 }
