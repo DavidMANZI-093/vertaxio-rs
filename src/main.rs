@@ -121,18 +121,32 @@ fn main() -> Result<(), Box<dyn error::Error>> {
     });
 
     utils::logger::info(&format!(
-        "Hold {} to activate processing, press {} to exit.",
+        "Hold {} to activate processing, press {} to switch profiles, press {} to exit.",
         vk_to_string(cfg.trigger_key),
+        vk_to_string(cfg.mode_switch_key),
         vk_to_string(cfg.exit_key)
     ));
 
     let mut was_trigger_down = false;
+    let mut was_mode_switch_down = false;
 
     loop {
         if is_key_down(cfg.exit_key) {
             should_stop.store(true, Ordering::SeqCst);
             break;
         }
+
+        let is_mode_switch_down = is_key_down(cfg.mode_switch_key);
+        if is_mode_switch_down && !was_mode_switch_down {
+            let current = is_day_mode.load(Ordering::Relaxed);
+            let next = !current;
+            is_day_mode.store(next, Ordering::Relaxed);
+            utils::logger::info(&format!(
+                "Filter Profile switched to: {}",
+                if next { "DAY" } else { "NIGHT" }
+            ));
+        }
+        was_mode_switch_down = is_mode_switch_down;
 
         let is_trigger_down = is_key_down(cfg.trigger_key);
         if is_trigger_down && !was_trigger_down {
