@@ -75,7 +75,7 @@ pub fn enumerate() -> Result<Monitor, XError> {
     let monitors = get_all();
 
     if monitors.is_empty() {
-        return Err(XError::ConfigError("No monitors found".into()));
+        return Err(XError::SystemError("No monitors found".into()));
     }
 
     if monitors.len() == 1 {
@@ -92,7 +92,7 @@ pub fn enumerate() -> Result<Monitor, XError> {
 
     let ch = Getch::new()
         .getch()
-        .map_err(|e| XError::ConfigError(format!("Read error: {}", e)))?;
+        .map_err(|e| XError::SystemError(format!("Read error: {}", e)))?;
 
     let choice_char = ch as char;
     let choice = choice_char.to_digit(10).unwrap_or(255) as u8;

@@ -60,11 +60,9 @@ fn main() -> Result<(), Box<dyn error::Error>> {
                         // TODO: OpenCV logic will go here
                         frames += 1;
                     }
+                    Err(services::errors::XError::Timeout) => {}
                     Err(e) => {
-                        let err_str = e.to_string();
-                        if !err_str.contains("Timeout getting frame") {
-                            utils::logger::debug(&format!("Capture skipped: {}", err_str));
-                        }
+                        utils::logger::debug(&format!("Capture skipped: {}", e));
                     }
                 }
 

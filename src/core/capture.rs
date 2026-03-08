@@ -18,7 +18,7 @@ impl DXGICapture {
     pub fn new(hmonitor: HMONITOR) -> Result<Self, XError> {
         unsafe {
             let factory: IDXGIFactory1 = CreateDXGIFactory1()
-                .map_err(|e| XError::ConfigError(format!("CreateDXGIFactory1 failed: {}", e)))?;
+                .map_err(|e| XError::SystemError(format!("CreateDXGIFactory1 failed: {}", e)))?;
 
             let mut adapter_idx = 0;
             let mut target_adapter = None;
@@ -43,15 +43,15 @@ impl DXGICapture {
             }
 
             let adapter = target_adapter.ok_or_else(|| {
-                XError::ConfigError("Failed to find DXGI Adapter for monitor".into())
+                XError::SystemError("Failed to find DXGI Adapter for monitor".into())
             })?;
             let output = target_output.ok_or_else(|| {
-                XError::ConfigError("Failed to find DXGI Output for monitor".into())
+                XError::SystemError("Failed to find DXGI Output for monitor".into())
             })?;
 
             let output1: IDXGIOutput1 = output
                 .cast()
-                .map_err(|e| XError::ConfigError(format!("Failed to cast IDXGIOutput1: {}", e)))?;
+                .map_err(|e| XError::SystemError(format!("Failed to cast IDXGIOutput1: {}", e)))?;
 
             let mut device: Option<ID3D11Device> = None;
             let mut context: Option<ID3D11DeviceContext> = None;
@@ -69,14 +69,14 @@ impl DXGICapture {
                 None,
                 Some(&mut context),
             )
-            .map_err(|e| XError::ConfigError(format!("D3D11CreateDevice failed: {}", e)))?;
+            .map_err(|e| XError::SystemError(format!("D3D11CreateDevice failed: {}", e)))?;
 
             let device = device.unwrap();
             let context = context.unwrap();
 
             let duplication = output1
                 .DuplicateOutput(&device)
-                .map_err(|e| XError::ConfigError(format!("DuplicateOutput failed: {}", e)))?;
+                .map_err(|e| XError::SystemError(format!("DuplicateOutput failed: {}", e)))?;
 
             let out_desc = duplication.GetDesc();
 
@@ -121,10 +121,10 @@ impl DXGICapture {
             {
                 Ok(_) => {}
                 Err(e) if e.code() == DXGI_ERROR_WAIT_TIMEOUT => {
-                    return Err(XError::ConfigError("Timeout getting frame".into()));
+                    return Err(XError::Timeout);
                 }
                 Err(e) => {
-                    return Err(XError::ConfigError(format!(
+                    return Err(XError::SystemError(format!(
                         "AcquireNextFrame failed: {}",
                         e
                     )));
@@ -134,7 +134,7 @@ impl DXGICapture {
             let resource = resource.unwrap();
             let texture2d: ID3D11Texture2D = resource.cast().map_err(|e| {
                 let _ = self.duplication.ReleaseFrame();
-                XError::ConfigError(format!("Failed to cast resource to Texture2D: {}", e))
+                XError::SystemError(format!("Failed to cast resource to Texture2D: {}", e))
             })?;
 
             let mut staging_texture: Option<ID3D11Texture2D> = None;
@@ -142,7 +142,7 @@ impl DXGICapture {
                 .CreateTexture2D(&self.texture_desc, None, Some(&mut staging_texture))
                 .map_err(|e| {
                     let _ = self.duplication.ReleaseFrame();
-                    XError::ConfigError(format!("CreateTexture2D failed: {}", e))
+                    XError::SystemError(format!("CreateTexture2D failed: {}", e))
                 })?;
             let staging_texture = staging_texture.unwrap();
 
@@ -153,7 +153,7 @@ impl DXGICapture {
                 .Map(&staging_texture, 0, D3D11_MAP_READ, 0, Some(&mut mapped))
                 .map_err(|e| {
                     let _ = self.duplication.ReleaseFrame();
-                    XError::ConfigError(format!("Map failed: {}", e))
+                    XError::SystemError(format!("Map failed: {}", e))
                 })?;
 
             let bytes_per_pixel = 4; // BGRA
