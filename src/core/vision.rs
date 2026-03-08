@@ -27,7 +27,7 @@ impl VisionPipeline {
         night_upper_bound: [i32; 3],
         is_day_mode: Arc<AtomicBool>,
     ) -> Result<Self, XError> {
-        crate::utils::logger::info("Initializing Pure Rust SIMD-Accelerated Vision Pipeline (CPU only).");
+        crate::utils::logger::info("Initializing vision pipeline");
 
         Ok(Self {
             day_lower_bound,
