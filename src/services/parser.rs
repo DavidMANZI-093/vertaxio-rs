@@ -1,6 +1,6 @@
 use serde::Deserialize;
 use std::path::PathBuf;
-use windows::Win32::UI::Input::KeyboardAndMouse::{VIRTUAL_KEY, VK_C, VK_K, VK_Q, VK_X, VK_Z};
+use windows::Win32::UI::Input::KeyboardAndMouse::{VIRTUAL_KEY, VK_C, VK_K, VK_M, VK_Q, VK_X, VK_Z};
 
 use crate::core::monitor::{self, Monitor};
 use crate::services::errors::XError::{self, ConfigError};
@@ -9,7 +9,13 @@ use crate::services::errors::XError::{self, ConfigError};
 pub struct Config {
     pub exit_key: VIRTUAL_KEY,
     pub trigger_key: VIRTUAL_KEY,
+    pub mode_switch_key: VIRTUAL_KEY,
     pub fps: u8,
+    pub debug_mode: bool,
+    pub day_hsv_low: [i32; 3],
+    pub day_hsv_high: [i32; 3],
+    pub night_hsv_low: [i32; 3],
+    pub night_hsv_high: [i32; 3],
     pub monitor: Monitor,
 }
 
@@ -17,8 +23,27 @@ pub struct Config {
 struct RawConfig {
     exit_key: String,
     trigger_key: String,
+    #[serde(default = "default_mode_switch_key")]
+    mode_switch_key: String,
     fps: u8,
+    #[serde(default)]
+    debug_mode: bool,
+    #[serde(default = "default_day_hsv_low")]
+    day_hsv_low: [i32; 3],
+    #[serde(default = "default_day_hsv_high")]
+    day_hsv_high: [i32; 3],
+    #[serde(default = "default_night_hsv_low")]
+    night_hsv_low: [i32; 3],
+    #[serde(default = "default_night_hsv_high")]
+    night_hsv_high: [i32; 3],
 }
+
+fn default_mode_switch_key() -> String { "M".to_string() }
+
+fn default_day_hsv_low() -> [i32; 3] { [0, 134, 78] }
+fn default_day_hsv_high() -> [i32; 3] { [12, 255, 255] }
+fn default_night_hsv_low() -> [i32; 3] { [0, 122, 78] }
+fn default_night_hsv_high() -> [i32; 3] { [12, 255, 255] }
 
 impl Config {
     pub fn load(path: Option<PathBuf>) -> Result<Config, XError> {
@@ -54,6 +79,17 @@ impl Config {
                 .into());
             }
         };
+        let mode_switch_key: VIRTUAL_KEY = match cfg.mode_switch_key.to_uppercase().as_str() {
+            "M" => VK_M,
+            _ => {
+                return Err(ConfigError(format!(
+                    "Invalid mode_switch_key: '{}'. Allowed values are 'M'.",
+                    cfg.mode_switch_key
+                ))
+                .into());
+            }
+        };
+
         let fps: u8 = cfg.fps;
         if !(30..=120).contains(&fps) {
             return Err(ConfigError(format!(
@@ -62,14 +98,26 @@ impl Config {
             ))
             .into());
         }
-        
+        let debug_mode = cfg.debug_mode;
+
         // Enumerate and get the selected monitor
         let monitor = monitor::enumerate()?;
-        
+
+        let day_hsv_low = cfg.day_hsv_low;
+        let day_hsv_high = cfg.day_hsv_high;
+        let night_hsv_low = cfg.night_hsv_low;
+        let night_hsv_high = cfg.night_hsv_high;
+
         Ok(Config {
             exit_key,
             trigger_key,
+            mode_switch_key,
             fps,
+            debug_mode,
+            day_hsv_low,
+            day_hsv_high,
+            night_hsv_low,
+            night_hsv_high,
             monitor,
         })
     }
