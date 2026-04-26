@@ -2,7 +2,7 @@
 
 > *Aim as good as Masterchief, bruv.*
 
-[![vertaxio-rs — Demo clip](https://cdn.jumpshare.com/preview/Ffb4-hKU4svuKGtERBWYJQ8PJzz2mUIYm3u9Lrrxmtj1y3E7deHB4CrzgoH-GAWmjlSIw_Q5uHchai3Gto7cvoNOtOsMHiqUqnXF95wCuZOcuPvc4wYximVLSmlFKbXcX5c4O55oWHsP8igFfmA9rW6yjbN-I2pg_cnoHs_AmgI.mp4)]
+[Watch demo clip (~11 min)](https://archive.org/details/vertaxio-demo-clip)
 
 A real-time game-vision research tool for **Call of Duty 4: Modern Warfare**, rewritten from scratch in Rust — purpose-driven for maximum performance on modest hardware, with zero dependency on OpenCV.
 
